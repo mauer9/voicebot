@@ -1,0 +1,24 @@
+[default-inb-dest]
+exten => s,1,Answer()
+
+exten => s,n(start),Wait(1)
+exten => s,n,Playback(custom/hello)
+
+exten => s,n,Record(/tmp/${UNIQUEID}.wav,3,10,q)
+
+exten => s,n,EAGI(custom_stt,/tmp/${UNIQUEID}.wav)
+exten => s,n,NoOp(${STT})
+
+exten => s,n,EAGI(custom_gpt,${STT})
+exten => s,n,NoOp(${GPT})
+
+exten => s,n,EAGI(custom_tts,${GPT})
+exten => s,n,NoOp(${TTS_LINK})
+
+exten => s,n(conv),System(ffmpeg -timeout 1000000 -headers $'AUTHORIZATION: **token**\r\nX-USER-ID: **userid**\r\n' -i "${TTS_LINK}" -filter:a "volume=5" /tmp/${UNIQUEID}-tts.mp3)
+exten => s,n,Set(exists=${STAT(e,/tmp/${UNIQUEID}-tts.mp3)})
+exten => s,n,GotoIf($["${exists}" = "0"]?conv)
+
+exten => s,n,MP3Player(/tmp/${UNIQUEID}-tts.mp3)
+
+exten => s,n,Goto(start)
